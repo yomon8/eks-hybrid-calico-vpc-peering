@@ -1,0 +1,73 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sample
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: sample
+  name: sample-app
+  labels:
+    app: sample-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sample-app
+  template:
+    metadata:
+      labels:
+        app: sample-app
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: eks.amazonaws.com/compute-type
+                operator: In
+                values:
+                - hybrid
+      containers:
+        - name: sample
+          image: hashicorp/http-echo
+          imagePullPolicy: IfNotPresent
+          # 3000番ポートで起動し、Pod名を返す簡易HTTPサーバ
+          args:
+            - -listen=:3000
+            - -text="Hello from Pod [$(POD_NAME)] !"
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          ports:
+            - name: app-port
+              containerPort: 3000
+          resources:
+            requests:
+              cpu: 250m
+              memory: 128Mi
+            limits:
+              cpu: 250m
+              memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: sample
+  name: sample-svc
+spec:
+  # NodePort にしておくことで、各ノードの <NodeIP>:<NodePort> でアクセス可能になる
+  type: NodePort
+  selector:
+    app: sample-app
+  ports:
+    - name: http
+      port: 80                # Service で表向きに使われるポート番号
+      targetPort: 3000        # Pod (コンテナ) 側のポート
+      protocol: TCP
+      # nodePort は省略すると自動で割り当てられるが、固定したい場合は指定する
+      nodePort: 30080

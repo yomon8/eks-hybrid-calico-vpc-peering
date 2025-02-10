@@ -1,0 +1,81 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nw-check
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: nw-check
+  name: nw-check-managed
+  labels:
+    app: nw-check-managed
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nw-check-managed
+  template:
+    metadata:
+      labels:
+        app: nw-check-managed
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: eks.amazonaws.com/compute-type
+                operator: NotIn
+                values:
+                - hybrid
+      containers:
+        - name: nw-check
+          image: nicolaka/netshoot
+          command: ["sleep","infinity"]
+          resources:
+            requests:
+              cpu: 250m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 64Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: nw-check
+  name: nw-check-hybrid
+  labels:
+    app: nw-check-hybrid
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nw-check-hybrid
+  template:
+    metadata:
+      labels:
+        app: nw-check-hybrid
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: eks.amazonaws.com/compute-type
+                operator: In
+                values:
+                - hybrid
+      containers:
+        - name: nw-check
+          image: nicolaka/netshoot
+          command: ["sleep","infinity"]
+          resources:
+            requests:
+              cpu: 250m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 64Mi
